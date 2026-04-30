@@ -6,6 +6,10 @@
 #include "utiles.h"
 #include <locale.h>
 
+#if defined(__GNUC__)
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#endif
+
 /*
     -> Falta pre y pos
     -> ERROR ALGOTRON: timeout despues o durante (no se sabe) de realizar jugada.
@@ -244,7 +248,7 @@ void validez_posicion_obstaculo(nivel_t nivel_juego, int *fila_aleatoria_generad
     }
 }
 
-bool es_posicion_valida_bola_catapulta(nivel_t nivel_juego, int fila_generada_aleatoria_catapulta, int columna_generada_aleatoria_catapulta)
+bool es_posicion_valida_catapulta(nivel_t nivel_juego, int fila_generada_aleatoria_catapulta, int columna_generada_aleatoria_catapulta)
 {
     bool posicion_valida = true;
     if (es_pared(nivel_juego.paredes, nivel_juego.tope_paredes, fila_generada_aleatoria_catapulta, columna_generada_aleatoria_catapulta))
@@ -277,7 +281,7 @@ void inicializar_catapulta(nivel_t *nivel_juego)
     int tope = nivel_juego->tope_obstaculos;
 
     generar_posiciones_aleatorias(&fila_generada_aleatoria_catapulta, &columna_generada_aleatoria_catapulta);
-    while (!(es_posicion_valida_bola_catapulta(*nivel_juego, fila_generada_aleatoria_catapulta, columna_generada_aleatoria_catapulta)))
+    while (!(es_posicion_valida_catapulta(*nivel_juego, fila_generada_aleatoria_catapulta, columna_generada_aleatoria_catapulta)))
     {
         generar_posiciones_aleatorias(&fila_generada_aleatoria_catapulta, &columna_generada_aleatoria_catapulta);
     }
@@ -519,11 +523,11 @@ void cambiar_posicion_pergamino_a_altar(nivel_t *nivel_juego, bool pergamino_ent
     }
 }
 
-bool homero_piso_totem(objeto_t herramientas[MAX_ELEMENTOS], int posicion_fila_homero, int posicion_col_homero)
+bool homero_piso_totem(objeto_t herramientas[MAX_ELEMENTOS], int tope_herramientas, int posicion_fila_homero, int posicion_col_homero)
 {
     bool homero_piso_totem = false;
     int i = 0;
-    while (i < MAX_ELEMENTOS && !homero_piso_totem)
+    while (i < tope_herramientas && !homero_piso_totem)
     {
         if ((herramientas[i].tipo == SIMBOLO_TOTEM) && (herramientas[i].posicion.fil == posicion_fila_homero) && (herramientas[i].posicion.col == posicion_col_homero))
         {
@@ -549,7 +553,7 @@ void eliminar_posicion_totem(objeto_t *herramientas, int *tope_herramientas, int
     }
     if (indice_obstaculo_a_eliminar != INICIALIZACION_NO_BASURA)
     {
-        for (int f = indice_obstaculo_a_eliminar; f < *tope_herramientas - 1; f++)
+        for (int f = indice_obstaculo_a_eliminar; f < (*tope_herramientas) - 1; f++)
         {
             herramientas[f] = herramientas[f + 1];
         }
@@ -567,11 +571,12 @@ void sumar_vida_extra_homero(int *vidas_restantes)
 bool bola_de_fuego_posicion_valida(nivel_t *nivel_juego, int fila_afectada_catapulta, int columna_afectada_catapulta, int posicion_fila_homero, int posicion_col_homero)
 {
     bool caida_bola_fuego_valida = true;
-    if (es_pared(nivel_juego->paredes, nivel_juego->tope_paredes, fila_afectada_catapulta, columna_afectada_catapulta))
+    
+    if (es_posicion_homero(fila_afectada_catapulta, columna_afectada_catapulta, posicion_fila_homero, posicion_col_homero))
     {
         caida_bola_fuego_valida = false;
     }
-    else if (es_posicion_homero(fila_afectada_catapulta, columna_afectada_catapulta, posicion_fila_homero, posicion_col_homero))
+    else if (piso_es_runa(nivel_juego->camino, fila_afectada_catapulta, columna_afectada_catapulta, nivel_juego->tope_camino))
     {
         caida_bola_fuego_valida = false;
     }
@@ -579,7 +584,7 @@ bool bola_de_fuego_posicion_valida(nivel_t *nivel_juego, int fila_afectada_catap
     {
         caida_bola_fuego_valida = false;
     }
-    else if (piso_es_runa(nivel_juego->camino, fila_afectada_catapulta, columna_afectada_catapulta, nivel_juego->tope_camino))
+    else if (es_pared(nivel_juego->paredes, nivel_juego->tope_paredes, fila_afectada_catapulta, columna_afectada_catapulta))
     {
         caida_bola_fuego_valida = false;
     }
@@ -602,7 +607,7 @@ bool eliminar_posicion_camino_catapulta(nivel_t *nivel_juego, int fil_afectada_c
     int i = 0;
     bool camino_modificado = false;
 
-    while ((i < nivel_juego->tope_camino) && !indice_camino_a_eliminar_encontrado)
+    while ((i < nivel_juego->tope_camino) && !(indice_camino_a_eliminar_encontrado))
     {
         if (son_posiciones_iguales(fil_afectada_catapulta, col_afectada_catapulta, nivel_juego->camino[i].fil, nivel_juego->camino[i].col))
         {
@@ -613,12 +618,14 @@ bool eliminar_posicion_camino_catapulta(nivel_t *nivel_juego, int fil_afectada_c
     }
     if (indice_posicion_a_eliminar != INICIALIZACION_NO_BASURA)
     {
-        for (int f = indice_posicion_a_eliminar; f < nivel_juego->tope_camino - 1; f++)
+        for (int f = indice_posicion_a_eliminar; f < (nivel_juego->tope_camino) - 1; f++)
         {
             nivel_juego->camino[f] = nivel_juego->camino[f + 1];
         }
-        nivel_juego->tope_camino--;
+        (nivel_juego->tope_camino)--;
         camino_modificado = true;
+        printf("La catapulta cayó en el camino!! Se eliminó la posición del camino en fila %d columna %d\n", fil_afectada_catapulta, col_afectada_catapulta);
+        printf("Quedan %d posiciones en el camino\n", nivel_juego->tope_camino);
     }
 
     return camino_modificado;
@@ -631,6 +638,7 @@ void activar_catapulta(nivel_t *nivel_juego, int posicion_fila_homero, int posic
     bool camino_modificado = false;
 
     posicion_afectada_random_catapulta(nivel_juego, &fil_afectada_catapulta, &col_afectada_catapulta, posicion_fila_homero, posicion_col_homero);
+    
     camino_modificado = eliminar_posicion_camino_catapulta(nivel_juego, fil_afectada_catapulta, col_afectada_catapulta);
 
     if (camino_modificado)
@@ -654,7 +662,7 @@ void pergamino_consecuencia(coordenada_t *pergamino, bool *recolecto_pergamino)
     eliminar_posicion_pergamino(pergamino);
     *recolecto_pergamino = true;
 }
-void runa_consecuencia(nivel_t *nivel_juego, int nivel_actual, int posicion_fila_homero, int posicion_col_homero)
+void runa_consecuencia(nivel_t *nivel_juego, int posicion_fila_homero, int posicion_col_homero)
 {
     activar_catapulta(nivel_juego, posicion_fila_homero, posicion_col_homero);
 }
@@ -700,24 +708,20 @@ void verificar_movimiento_posicion(nivel_t *nivel_juego, personaje_t *homero, in
     }
     else if (piso_es_runa(nivel_juego->camino, posicion_fila_homero, posicion_col_homero, nivel_juego->tope_camino))
     {
-        runa_consecuencia(nivel_juego, nivel_actual, posicion_fila_homero, posicion_col_homero);
+        runa_consecuencia(nivel_juego, posicion_fila_homero, posicion_col_homero);
         *camino_visible = true;
     }
     else if (homero_piso_altar(nivel_juego->camino, nivel_juego->tope_camino, posicion_fila_homero, posicion_col_homero))
     {
         altar_consecuencia(nivel_juego, homero->recolecto_pergamino);
     }
-    else if (homero_piso_totem(nivel_juego->herramientas, posicion_fila_homero, posicion_col_homero))
+    else if (homero_piso_totem(nivel_juego->herramientas, nivel_juego->tope_herramientas, posicion_fila_homero, posicion_col_homero))
     {
         printf("+1!! VIDAS : %d\n", homero->vidas_restantes);
         totem_consecuencia(nivel_juego, posicion_fila_homero, posicion_col_homero, &homero->vidas_restantes);
     }
 }
-void consecuencia_hechizo_revelador(coordenada_t *camino, int tope_camino, int posicion_homero_col, int posicion_homero_fil, int *hechizos_reveladores)
-{
-    (*hechizos_reveladores)--;
-}
-void realizar_hechizo_revelador(nivel_t *nivel_juego, int posicion_homero_fil, int posicion_homero_col, bool *camino_visible)
+void realizar_hechizo_revelador(bool *camino_visible)
 {
     *camino_visible = true;
 }
@@ -755,7 +759,7 @@ void eliminar_herramienta_usada(int *herramienta, char tipo_herramienta)
     (*herramienta)--;
     printf("-1!! %c : %d\n", tipo_herramienta, *herramienta);
 }
-void realizar_jugada_herramienta(nivel_t *nivel_juego, personaje_t *homero, char movimiento, int nivel_actual, bool *camino_visible)
+void realizar_jugada_herramienta(nivel_t *nivel_juego, personaje_t *homero, char movimiento, bool *camino_visible)
 {
     if (piso_es_runa(nivel_juego->camino, homero->posicion.fil, homero->posicion.col, nivel_juego->tope_camino))
     {
@@ -769,7 +773,8 @@ void realizar_jugada_herramienta(nivel_t *nivel_juego, personaje_t *homero, char
     {
         if (homero->hechizos_reveladores > 0)
         {
-            realizar_hechizo_revelador(nivel_juego, homero->posicion.fil, homero->posicion.col, camino_visible);
+            activar_catapulta(nivel_juego, homero->posicion.fil, homero->posicion.col);
+            realizar_hechizo_revelador(camino_visible);
             eliminar_hechizo_usado(&homero->hechizos_reveladores);
         }
     }
@@ -812,8 +817,8 @@ void consecuencia_movimiento_valido(nivel_t *nivel_juego, personaje_t *homero, i
     else
     {
         asignar_posicion_nueva_homero(homero, fila_posicion_homero_aux, col_posicion_homero_aux);
-        consecuencia_movimiento_es_posicion_daño(&(homero->vidas_restantes));
         verificar_movimiento_posicion(nivel_juego, homero, nivel_actual, camino_visible);
+        consecuencia_movimiento_es_posicion_daño(&(homero->vidas_restantes));
         printf("Pisaste un espacio vacio!!! -1 VIDA \n");
         printf("VIDAS : %d\n", homero->vidas_restantes);
     }
@@ -853,7 +858,7 @@ void realizar_jugada(juego_t *juego, char movimiento)
     }
     else
     {
-        realizar_jugada_herramienta(&juego->niveles[nivel_actual], &juego->homero, movimiento, nivel_actual, &juego->camino_visible);
+        realizar_jugada_herramienta(&juego->niveles[nivel_actual], &juego->homero, movimiento, &juego->camino_visible);
     }
 }
 
@@ -949,11 +954,11 @@ void cargar_elementos_mapa(char matriz_mapa[MAX_FILAS][MAX_COLUMNAS], nivel_t ni
 
 void mostrar_juego(juego_t juego)
 {
+    printf("tope camino: %d\n", juego.niveles[juego.nivel_actual - 1].tope_camino);
     char matriz_mapa[MAX_FILAS][MAX_COLUMNAS];
     int nivel = juego.nivel_actual - 1;
     inicializar_matriz_juego(matriz_mapa);
     cargar_elementos_mapa(matriz_mapa, juego.niveles[nivel], juego.homero.posicion.fil, juego.homero.posicion.col);
-
     if (juego.camino_visible)
     {
         for (int fila = 0; fila < MAX_FILAS; fila++)
@@ -990,23 +995,14 @@ void mostrar_juego(juego_t juego)
 }
 void cambiar_nivel(juego_t *juego)
 {
-    int nivel = juego->nivel_actual - 1;
-    if (estado_nivel(juego->niveles[nivel], juego->homero) == ESTADO_JUEGO_GANADO_)
+    if ((estado_juego(*juego) == ESTADO_JUEGO_EN_CURSO_) && (juego->nivel_actual < MAX_NIVELES))
     {
-        if (nivel < MAX_NIVELES - 1)
-        {
-            juego->homero.recolecto_pergamino = false;
-            juego->homero.antorchas = CANTIDAD_INICIAL_ANTORCHAS;
-            juego->camino_visible = true;
-            inicializar_posicion_inicial_homero(&juego->homero, juego->niveles[nivel].camino);
-            juego->nivel_actual = nivel + 2;
-            nivel++;
-            printf("¡Has avanzado al siguiente nivel!\n");
-        }
-        else
-        {
-            printf("¡Has completado todos los niveles!\n");
-        }
+        juego->homero.recolecto_pergamino = false;
+        juego->nivel_actual++;
+        juego->homero.antorchas = CANTIDAD_INICIAL_ANTORCHAS;
+        juego->homero.antorcha_encendida = false;
+        inicializar_posicion_inicial_homero(&juego->homero, juego->niveles[juego->nivel_actual - 1].camino);
+        juego->camino_visible = true;
     }
 }
 /*************************************/
@@ -1029,7 +1025,7 @@ int estado_juego(juego_t juego)
     {
         resultado_estado_juego = ESTADO_JUEGO_GANADO_;
     }
-    else if (juego.homero.vidas_restantes <= 0)
+    else if (juego.homero.vidas_restantes == ESTADO_JUEGO_EN_CURSO_)
     {
         resultado_estado_juego = ESTADO_JUEGO_PERDIDO_;
     }
