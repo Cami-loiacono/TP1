@@ -62,7 +62,10 @@ int main()
         solicitar_movimiento(&movimiento);
         system("clear");
         realizar_jugada(&juego, movimiento);
-        cambiar_nivel(&juego);
+        if (estado_nivel(juego.niveles[juego.nivel_actual], juego.homero) == ESTADO_JUEGO_GANADO)
+        {
+            cambiar_nivel(&juego);
+        }
 
         estado_juego_actual = estado_juego(juego);
     };
