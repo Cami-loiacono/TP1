@@ -483,14 +483,6 @@ void inicializar_matriz_juego(char matriz_mapa[MAX_FILAS][MAX_COLUMNAS])
         }
     }
 }
-void cargar_camino_mapa(char matriz_mapa[MAX_FILAS][MAX_COLUMNAS], nivel_t nivel_juego, int posicion_homero_fil, int posicion_homero_col)
-{
-    for (int i = 0; i < nivel_juego.tope_camino; i++)
-    {
-        matriz_mapa[nivel_juego.camino[i].fil][nivel_juego.camino[i].col] = SIMBOLO_CAMINO;
-    }
-    matriz_mapa[posicion_homero_fil][posicion_homero_col] = SIMBOLO_HOMERO;
-}
 
 bool homero_piso_altar(coordenada_t camino[MAX_CAMINO], int tope_camino, int posicion_fila_homero, int posicion_col_homero)
 {
@@ -546,7 +538,7 @@ void eliminar_posicion_totem(objeto_t *herramientas, int *tope_herramientas, int
     int indice_obstaculo_a_eliminar = INICIALIZACION_NO_BASURA;
     bool homero_piso_totem = false;
     int i = 0;
-    while (i < MAX_ELEMENTOS && !homero_piso_totem)
+    while (i < *tope_herramientas && !homero_piso_totem)
     {
         if ((herramientas[i].tipo == SIMBOLO_TOTEM) && (son_posiciones_iguales(posicion_fila_homero, posicion_col_homero, herramientas[i].posicion.fil, herramientas[i].posicion.col)))
         {
@@ -557,14 +549,14 @@ void eliminar_posicion_totem(objeto_t *herramientas, int *tope_herramientas, int
     }
     if (indice_obstaculo_a_eliminar != INICIALIZACION_NO_BASURA)
     {
-        for (int f = indice_obstaculo_a_eliminar; f < MAX_ELEMENTOS - 1; f++)
+        for (int f = indice_obstaculo_a_eliminar; f < *tope_herramientas - 1; f++)
         {
             herramientas[f] = herramientas[f + 1];
         }
-        herramientas[MAX_ELEMENTOS - 1].tipo = '\0';
         if (*tope_herramientas > 0)
         {
             (*tope_herramientas)--;
+            printf("totem eliminado, quedan %d totems\n", (*tope_herramientas));
         }
     }
 }
@@ -727,7 +719,6 @@ void consecuencia_hechizo_revelador(coordenada_t *camino, int tope_camino, int p
 }
 void realizar_hechizo_revelador(nivel_t *nivel_juego, int posicion_homero_fil, int posicion_homero_col, bool *camino_visible)
 {
-    activar_catapulta(nivel_juego, posicion_homero_fil, posicion_homero_col);
     *camino_visible = true;
 }
 
@@ -736,31 +727,14 @@ int calcular_distancia_manhattan(int fila_mapa, int col_mapa, int fil_homero, in
     int distancia_manhattan = abs(fila_mapa - fil_homero) + abs(col_mapa - col_homero);
     return distancia_manhattan;
 }
-
-void revelar_vista_mapa_manhattan(nivel_t nivel_juego, int posicion_homero_fil, int posicion_homero_col)
+void cargar_camino_mapa(char matriz_mapa[MAX_FILAS][MAX_COLUMNAS], nivel_t nivel_juego)
 {
-    char matriz_mapa[MAX_FILAS][MAX_COLUMNAS];
-    int distancia_manhattan = INICIALIZACION_NO_BASURA;
-    inicializar_matriz_juego(matriz_mapa);
-    cargar_camino_mapa(matriz_mapa, nivel_juego, posicion_homero_fil, posicion_homero_col);
-
-    for (int fila = 0; fila < MAX_FILAS; fila++)
+    for (int i = 0; i < nivel_juego.tope_camino; i++)
     {
-        for (int col = 0; col < MAX_COLUMNAS; col++)
-        {
-            distancia_manhattan = calcular_distancia_manhattan(fila, col, posicion_homero_fil, posicion_homero_col);
-            if (distancia_manhattan <= DISTANCIA_MANHATTAN_REVELAR)
-            {
-                printf("%c ", matriz_mapa[fila][col]);
-            }
-            else
-            {
-                printf(" ");
-            }
-        }
-        printf("\n");
+        matriz_mapa[nivel_juego.camino[i].fil][nivel_juego.camino[i].col] = SIMBOLO_CAMINO;
     }
 }
+
 
 void realizar_encendido_antorcha(bool *antorcha_encendida)
 {
@@ -787,7 +761,7 @@ void realizar_jugada_herramienta(nivel_t *nivel_juego, personaje_t *homero, char
     {
         return;
     }
-    if(camino_visible || homero->antorcha_encendida)
+    if (*camino_visible || homero->antorcha_encendida)
     {
         return;
     }
@@ -810,8 +784,14 @@ void realizar_jugada_herramienta(nivel_t *nivel_juego, personaje_t *homero, char
 }
 void consecuencia_movimiento_es_posicion_daño(int *vidas_restantes)
 {
-    (*vidas_restantes)--;
-    printf("VIDAS : %d\n", *vidas_restantes);
+    if (*vidas_restantes > 0)
+    {
+        (*vidas_restantes)--;
+    }
+    if (*vidas_restantes < 0)
+    {
+        *vidas_restantes = 0;
+    }
 }
 void asignar_posicion_nueva_homero(personaje_t *homero, int fila_posicion_homero_aux, int col_posicion_homero_aux)
 {
@@ -832,9 +812,10 @@ void consecuencia_movimiento_valido(nivel_t *nivel_juego, personaje_t *homero, i
     else
     {
         asignar_posicion_nueva_homero(homero, fila_posicion_homero_aux, col_posicion_homero_aux);
-        verificar_movimiento_posicion(nivel_juego, homero, nivel_actual, camino_visible);
         consecuencia_movimiento_es_posicion_daño(&(homero->vidas_restantes));
+        verificar_movimiento_posicion(nivel_juego, homero, nivel_actual, camino_visible);
         printf("Pisaste un espacio vacio!!! -1 VIDA \n");
+        printf("VIDAS : %d\n", homero->vidas_restantes);
     }
 }
 
@@ -876,8 +857,9 @@ void realizar_jugada(juego_t *juego, char movimiento)
     }
 }
 
-void revelar_mapa_manhattan(int distancia_manhattan, char matriz_mapa[MAX_FILAS][MAX_COLUMNAS], int fila_homero, int col_homero)
+void revelar_mapa_manhattan(char matriz_mapa[MAX_FILAS][MAX_COLUMNAS], int fila_homero, int col_homero)
 {
+    int distancia_manhattan = INICIALIZACION_NO_BASURA;
     for (int fila = 0; fila < MAX_FILAS; fila++)
     {
         for (int col = 0; col < MAX_COLUMNAS; col++)
@@ -887,17 +869,91 @@ void revelar_mapa_manhattan(int distancia_manhattan, char matriz_mapa[MAX_FILAS]
             {
                 printf("%c ", matriz_mapa[fila][col]);
             }
+            else
+            {
+                printf("  ");
+            }
         }
         printf("\n");
     }
 }
+void cargar_paredes_mapa(char matriz_mapa[MAX_FILAS][MAX_COLUMNAS], nivel_t nivel_juego, int posicion_homero_fil, int posicion_homero_col)
+{
+    for (int i = 0; i < nivel_juego.tope_paredes; i++)
+    {
+        matriz_mapa[nivel_juego.paredes[i].fil][nivel_juego.paredes[i].col] = SIMBOLO_PARED;
+    }
+    matriz_mapa[posicion_homero_fil][posicion_homero_col] = SIMBOLO_HOMERO;
+}
+
+void cargar_pergamino_mapa(char matriz_mapa[MAX_FILAS][MAX_COLUMNAS], nivel_t nivel_juego, bool homero_recolecto_pergamino)
+{
+    if (!homero_recolecto_pergamino)
+    {
+        matriz_mapa[nivel_juego.pergamino.fil][nivel_juego.pergamino.col] = SIMBOLO_PERGAMINO;
+    }
+}
+void cargar_totem_mapa(char matriz_mapa[MAX_FILAS][MAX_COLUMNAS], nivel_t nivel_juego)
+{
+    if (nivel_juego.tope_herramientas > 0)
+    {
+        for (int i = 0; i < nivel_juego.tope_herramientas; i++)
+        {
+            matriz_mapa[nivel_juego.herramientas[i].posicion.fil][nivel_juego.herramientas[i].posicion.col] = SIMBOLO_TOTEM;
+        }
+    }
+}
+void cargar_obstaculos_mapa(char matriz_mapa[MAX_FILAS][MAX_COLUMNAS], nivel_t nivel_juego)
+{
+    for (int i = 0; i < nivel_juego.tope_obstaculos; i++)
+    {
+        matriz_mapa[nivel_juego.obstaculos[i].posicion.fil][nivel_juego.obstaculos[i].posicion.col] = SIMBOLO_PIEDRA_CASTIGO;
+    }
+}
+void cargar_altar_runa_mapa(char matriz_mapa[MAX_FILAS][MAX_COLUMNAS], nivel_t nivel_juego)
+{
+    matriz_mapa[nivel_juego.camino[0].fil][nivel_juego.camino[0].col] = SIMBOLO_RUNA;
+    matriz_mapa[nivel_juego.camino[nivel_juego.tope_camino - 1].fil][nivel_juego.camino[nivel_juego.tope_camino - 1].col] = SIMBOLO_RUNA;
+}
+
+void cargar_elementos_mapa(char matriz_mapa[MAX_FILAS][MAX_COLUMNAS], nivel_t nivel_juego, int posicion_homero_fil, int posicion_homero_col)
+{
+    for (int i = 0; i < nivel_juego.tope_camino; i++)
+    {
+        matriz_mapa[nivel_juego.camino[i].fil][nivel_juego.camino[i].col] = SIMBOLO_CAMINO;
+    }
+    for (int i = 0; i < nivel_juego.tope_paredes; i++)
+    {
+        matriz_mapa[nivel_juego.paredes[i].fil][nivel_juego.paredes[i].col] = SIMBOLO_PARED;
+    }
+    for(int i = 0; i < nivel_juego.tope_obstaculos; i++)
+    {
+        matriz_mapa[nivel_juego.obstaculos[i].posicion.fil][nivel_juego.obstaculos[i].posicion.col] = nivel_juego.obstaculos[i].tipo;
+    }
+    for(int i = 0; i < nivel_juego.tope_herramientas; i++)
+    {
+        matriz_mapa[nivel_juego.herramientas[i].posicion.fil][nivel_juego.herramientas[i].posicion.col] = nivel_juego.herramientas[i].tipo;
+    }
+    if (nivel_juego.pergamino.fil != INICIALIZACION_NO_BASURA && nivel_juego.pergamino.col != INICIALIZACION_NO_BASURA)
+    {
+        matriz_mapa[nivel_juego.pergamino.fil][nivel_juego.pergamino.col] = SIMBOLO_PERGAMINO;
+    }
+    if (nivel_juego.tope_camino > 0)
+    {
+        matriz_mapa[nivel_juego.camino[nivel_juego.tope_camino - 1].fil][nivel_juego.camino[nivel_juego.tope_camino - 1].col] = SIMBOLO_ALTAR;
+        matriz_mapa[nivel_juego.camino[0].fil][nivel_juego.camino[0].col] = SIMBOLO_RUNA;
+    }
+    matriz_mapa[posicion_homero_fil][posicion_homero_col] = SIMBOLO_HOMERO;
+}
+
 
 void mostrar_juego(juego_t juego)
 {
     char matriz_mapa[MAX_FILAS][MAX_COLUMNAS];
     int nivel = juego.nivel_actual - 1;
     inicializar_matriz_juego(matriz_mapa);
-    cargar_camino_mapa(matriz_mapa, juego.niveles[nivel], juego.homero.posicion.fil, juego.homero.posicion.col);
+    cargar_elementos_mapa(matriz_mapa, juego.niveles[nivel], juego.homero.posicion.fil, juego.homero.posicion.col);
+
     if (juego.camino_visible)
     {
         for (int fila = 0; fila < MAX_FILAS; fila++)
@@ -909,10 +965,27 @@ void mostrar_juego(juego_t juego)
             printf("\n");
         }
     }
-    else if (juego.homero.antorcha_encendida)
+    else if(juego.homero.antorcha_encendida)
     {
-        int distancia_manhattan = INICIALIZACION_NO_BASURA;
-        revelar_mapa_manhattan(distancia_manhattan, matriz_mapa, juego.homero.posicion.fil, juego.homero.posicion.col);
+        revelar_mapa_manhattan(matriz_mapa, juego.homero.posicion.fil, juego.homero.posicion.col);
+    }
+    else
+    {
+        for (int fila = 0; fila < MAX_FILAS; fila++)
+        {
+            for (int col = 0; col < MAX_COLUMNAS; col++)
+            {
+                if(matriz_mapa[fila][col] == SIMBOLO_CAMINO)
+                {
+                    printf("  ");
+                }
+                else
+                {
+                    printf("%c ", matriz_mapa[fila][col]);
+                }
+            }
+            printf("\n");
+        }
     }
 }
 void cambiar_nivel(juego_t *juego)
@@ -922,13 +995,13 @@ void cambiar_nivel(juego_t *juego)
     {
         if (nivel < MAX_NIVELES - 1)
         {
-            juego->nivel_actual = nivel + 2;
-            nivel++;
-            printf("¡Has avanzado al siguiente nivel!\n");
-            inicializar_posicion_inicial_homero(&juego->homero, juego->niveles[nivel].camino);
             juego->homero.recolecto_pergamino = false;
             juego->homero.antorchas = CANTIDAD_INICIAL_ANTORCHAS;
             juego->camino_visible = true;
+            inicializar_posicion_inicial_homero(&juego->homero, juego->niveles[nivel].camino);
+            juego->nivel_actual = nivel + 2;
+            nivel++;
+            printf("¡Has avanzado al siguiente nivel!\n");
         }
         else
         {
@@ -956,7 +1029,7 @@ int estado_juego(juego_t juego)
     {
         resultado_estado_juego = ESTADO_JUEGO_GANADO_;
     }
-    else if (juego.homero.vidas_restantes == ESTADO_JUEGO_EN_CURSO_)
+    else if (juego.homero.vidas_restantes <= 0)
     {
         resultado_estado_juego = ESTADO_JUEGO_PERDIDO_;
     }
